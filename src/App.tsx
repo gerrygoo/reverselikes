@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { likes, Post } from './posts';
+import { likes, Post, Photo } from './posts';
 import { List, WindowScroller, InfiniteLoader } from 'react-virtualized';
 export interface AppState {
     blog: string;
@@ -21,6 +21,8 @@ export class App extends React.Component<{}, AppState> {
     public componentDidMount() {
         this.loadLikes();
 
+        document.title = 'Oldest to Newest';
+
         const el = document.getElementById('root');
         const style = window.getComputedStyle(el!, null).getPropertyValue('font-size');
         const lineHeightStyle = window.getComputedStyle(el!, null).getPropertyValue('line-height');
@@ -34,7 +36,7 @@ export class App extends React.Component<{}, AppState> {
         <InfiniteLoader
             isRowLoaded={(idx) => this.isRowLoaded(idx)}
             loadMoreRows={(idx) => this.loadMoreRows(idx)}
-            rowCount={3000}
+            rowCount={30000}
         >
             {({ onRowsRendered, registerChild }) => (
                 <WindowScroller>
@@ -49,14 +51,14 @@ export class App extends React.Component<{}, AppState> {
                             onRowsRendered={onRowsRendered}
 
                             // width={ window.innerWidth }
-                            width={window.innerWidth / (1.5)}
+                            width={window.innerWidth / 2}
 
                             ref={registerChild}
                             rowCount={this.state.posts.length}
                             rowHeight={(idx) => this.rowHeight(idx)}
                             rowRenderer={(confObj) => this.rowRenderer(confObj)}
 
-                            onScoll={({ clientHeight, scrollHeight, scrollTop }) => console.log(clientHeight, scrollHeight, scrollTop)}
+                            // onScoll={({ clientHeight, scrollHeight, scrollTop }) => console.log(clientHeight, scrollHeight, scrollTop)}
                         />
                     )}
                 </WindowScroller>
@@ -70,7 +72,7 @@ export class App extends React.Component<{}, AppState> {
         const res = await likes(this.state.blog, this.state.after);
         const { response: { _links: links, liked_posts: new_likes } } = { ...res };
         const { prev: { query_params: { after } } } = links;
-        console.log(new_likes);
+        // console.log(new_likes);
         this.setState({
             posts: this.state.posts.concat(new_likes.reverse()),
             after,
@@ -93,7 +95,7 @@ export class App extends React.Component<{}, AppState> {
         const { fontSize, lineHeight } = this.state;
 
         const lines = (
-            ((text.length * fontSize * 1.3 ) / window.innerWidth) +
+            ((text.length * fontSize ) / (window.innerWidth / 2) ) +
             (text.match(/<\/p>\n<p>/gi) ? text.match(/<\/p>\n<p>/gi)!.length : 0) * 2
         );
 
@@ -101,9 +103,17 @@ export class App extends React.Component<{}, AppState> {
         return lines * lineHeight;
     }
 
+    private photosHeight( photos: Array<Photo> ) {
+        const containerWidth = window.innerWidth / 2;
+        return photos.map(
+            photo => (photo.original_size.height * ( photo.original_size.width < containerWidth ? 1 : (containerWidth / photo.original_size.width) ))
+        ).reduce((acc, cur) => acc + cur);
+    }
+
     private rowHeight({ index }): number {
         const post: Post = this.state.posts[index];
-        const photosHeight = (post && post.photos) ? post.photos!.map(photo => photo.original_size.height).reduce((acc, cur) => acc + cur) : 0;
+
+        const photosHeight = post.photos ? this.photosHeight(post.photos) : 0;
         const bodyHeight = post.body ? this.textHeight(post.body) : 0;
         const textHeight = post.text ? this.textHeight(post.text) : 0;
 
@@ -122,7 +132,7 @@ export class App extends React.Component<{}, AppState> {
         const date = new Date();
         date.setTime(post.liked_timestamp * 1000);
 
-        if ( post.type == 'quote' ) console.log(post);
+        // if ( post.type == 'quote' ) console.log(post);
 
         return (
             <div

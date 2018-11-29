@@ -14,7 +14,7 @@
     "react-virtualized": "^9.21.0"
   },
   "scripts": {
-    "predeploy": "npm run build",
+    "predeploy": "npm run build && echo 'likes.gerrygoo.com' > ./build/CNAME",
     "deploy": "gh-pages -d build",
     "start": "react-scripts-ts start",
     "build": "react-scripts-ts build",
@@ -28,5 +28,5 @@
     "@types/react-dom": "^16.0.8",
     "typescript": "^3.1.1"
   },
-  "homepage": "https://gerrygoo.github.io/reverselikes"
+  "homepage": "."
 }
