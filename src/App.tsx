@@ -1,13 +1,12 @@
 import * as React from 'react';
-import InfiniteScroll from 'react-infinite-scroller';
-// import {  } from 'react-infinite-scroller';
 import { likes, Post } from './posts';
-// import * as ReactDOM from 'react-dom';
-
+import { List, WindowScroller, InfiniteLoader } from 'react-virtualized';
 export interface AppState {
     blog: string;
     posts: Array<Post>;
     after: number;
+    fontSize: number;
+    lineHeight: number;
 }
 
 export class App extends React.Component<{}, AppState> {
@@ -15,102 +14,157 @@ export class App extends React.Component<{}, AppState> {
         blog: 'gerardo-ga',
         posts: [] as Array<Post>,
         after: 788918400, // beginning of tumblr time
+        fontSize: 14,
+        lineHeight: 20,
     };
 
     public componentDidMount() {
         this.loadLikes();
 
+        const el = document.getElementById('root');
+        const style = window.getComputedStyle(el!, null).getPropertyValue('font-size');
+        const lineHeightStyle = window.getComputedStyle(el!, null).getPropertyValue('line-height');
+        const fontSize = parseFloat(style);
+        const lineHeight = parseFloat(lineHeightStyle);
 
-
+        this.setState({ fontSize, lineHeight });
     }
 
-    public render = () => {
-        const script = document.createElement("script");
-        script.src = "https://assets.tumblr.com/post.js";
-        // script.async = true;
-        script.defer = true;
+    public render = () => <div style={{ backgroundColor: 'rgb(54,70,93)', display: 'flex', justifyContent: 'center' }}>
+        <InfiniteLoader
+            isRowLoaded={(idx) => this.isRowLoaded(idx)}
+            loadMoreRows={(idx) => this.loadMoreRows(idx)}
+            rowCount={3000}
+        >
+            {({ onRowsRendered, registerChild }) => (
+                <WindowScroller>
+                    {({ height, isScrolling, onChildScroll, scrollTop }) => (
+                        <List
+                            autoHeight
+                            height={height}
+                            isScrolling={isScrolling}
+                            onScroll={onChildScroll}
+                            scrollTop={scrollTop}
 
-        document.body.appendChild(script);
-        return ( <div>
-        <p>Likes</p>
-        {/* <div
-            dangerouslySetInnerHTML={{
-                __html:
-                    this.state.posts.map(
-                        post =>
-                            `<div
-                                class="tumblr-post"
-                                data-href="https://embed.tumblr.com/embed/post/${post.blog.uuid.substring(2)}/${post.post_url.match(/\/post\/(\w+)/)![1]}"
-                            >
-                            </div>
-                            `
-                    ).reduce( (acc, cur) => acc + cur, '' )
-            }}
-        /> */}
+                            onRowsRendered={onRowsRendered}
 
-        {/* <InfiniteScroll
-            initialLoad
-            pageStart={0}
-            loadMore={ () => this.loadLikes() }
-            loader={<div className="loader" key={0}>Loading ...</div>}
-        > */}
+                            // width={ window.innerWidth }
+                            width={window.innerWidth / (1.5)}
 
-        {/* {this.state.posts.map(
-            post =>
-                <iframe
-                    key={post.post_url}
-                    className="tumblr-embed"
-                    src={`https://embed.tumblr.com/embed/post/${post.blog.uuid.substring(2)}/${post.post_url.match(/\/post\/(\w+)/)![1]}`}
-                    allowFullScreen
-                    frameBorder={0}
-                    style={{
-                         display:' block',
-                         padding:' 0px',
-                         margin: '10px',
-                         border:' none',
-                         visibility: 'visible',
-                         width:' 542px',
-                         minHeight:'200px',
-                         maxWidth: '100%',
-                         height: "auto",
-                    }}
-                /> */}
-        }
+                            ref={registerChild}
+                            rowCount={this.state.posts.length}
+                            rowHeight={(idx) => this.rowHeight(idx)}
+                            rowRenderer={(confObj) => this.rowRenderer(confObj)}
 
-        {this.state.posts.map(
-            post =>
-                <div
-                    key={post.post_url}
-                    className="tumblr-post"
-                    data-href={`https://embed.tumblr.com/embed/post/${post.blog.uuid.substring(2)}/${post.post_url.match(/\/post\/(\w+)/)![1]}`}
-                />
-            // <div
-            //     key={post.post_url}
-            //     dangerouslySetInnerHTML={{
-            //         __html: `
-            //         <div
-            //             class="tumblr-post"
-            //             data-href="https://embed.tumblr.com/embed/post/${post.blog.uuid.substring(2)}/${post.post_url.match(/\/post\/(\w+)/)![1]}">
-            //         </div>
-            //         `
-            //     }}
-            // />
-        )}
+                            onScoll={({ clientHeight, scrollHeight, scrollTop }) => console.log(clientHeight, scrollHeight, scrollTop)}
+                        />
+                    )}
+                </WindowScroller>
+            )}
+        </InfiniteLoader>
 
-        {/* </InfiniteScroll> */}
-        </div>);
-    }
+    </div>;
 
     private async loadLikes() {
+        // console.log('getting likes');
         const res = await likes(this.state.blog, this.state.after);
         const { response: { _links: links, liked_posts: new_likes } } = { ...res };
         const { prev: { query_params: { after } } } = links;
-        console.log('likes are');
         console.log(new_likes);
         this.setState({
             posts: this.state.posts.concat(new_likes.reverse()),
             after,
         });
+    }
+
+    private async loadMoreRows({ startIndex, stopIndex }) {
+        // console.log(`wanna load rows ${startIndex} to ${stopIndex}`);
+        // console.log(startIndex, this.state.posts.length);
+        if (startIndex > this.state.posts.length) {
+            await this.loadLikes();
+        }
+    }
+
+    private isRowLoaded({ index }) {
+        return index <= this.state.posts.length;
+    }
+
+    private textHeight(text: string) { // BEWARE new lines are like on the regex
+        const { fontSize, lineHeight } = this.state;
+
+        const lines = (
+            ((text.length * fontSize * 1.3 ) / window.innerWidth) +
+            (text.match(/<\/p>\n<p>/gi) ? text.match(/<\/p>\n<p>/gi)!.length : 0) * 2
+        );
+
+        // console.log(lines, lineHeight, lines*lineHeight, fontSize);
+        return lines * lineHeight;
+    }
+
+    private rowHeight({ index }): number {
+        const post: Post = this.state.posts[index];
+        const photosHeight = (post && post.photos) ? post.photos!.map(photo => photo.original_size.height).reduce((acc, cur) => acc + cur) : 0;
+        const bodyHeight = post.body ? this.textHeight(post.body) : 0;
+        const textHeight = post.text ? this.textHeight(post.text) : 0;
+
+        return photosHeight + bodyHeight + textHeight + 70;
+    }
+
+    private rowRenderer({
+        key,         // Unique key within array of rows
+        index,       // Index of row within collection
+        isScrolling, // The List is currently being scrolled
+        isVisible,   // This row is visible within the List (eg it is not an overscanned row)
+        style        // Style object to be applied to row (to position it)
+    }) {
+        const post = this.state.posts[index];
+
+        const date = new Date();
+        date.setTime(post.liked_timestamp * 1000);
+
+        if ( post.type == 'quote' ) console.log(post);
+
+        return (
+            <div
+                key={key}
+                style={{
+                    ...style,
+                    backgroundColor: 'white',
+                    // justifyContent: 'center',
+                    alignItems: 'center',
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}
+            >
+                <div style={{ alignSelf: 'flex-start' }} >{`On ${date.toLocaleString()}. Type: ${post.type}`}</div>
+                <a style={{ alignSelf: 'flex-start' }} >{post.post_url}</a>
+                {post.photos &&
+                    post.photos.map(
+                        photo =>
+                            <img
+                                style={{
+                                    display: 'block',
+                                    width: 'inherit',
+                                    // alignSelf: 'center',
+                                    // justifySelf: 'center',
+                                    maxWidth: photo.original_size.width,
+                                }}
+                                key={photo.original_size.url}
+                                src={photo.original_size.url}
+                            />
+                    )
+                }
+                {post.type === 'text' &&
+                    <div
+                        dangerouslySetInnerHTML={{__html: post.body!}}
+                    />
+                }
+                {post.type === 'quote' &&
+                    <div>{post.text!}</div>
+                }
+                <div style={{ height: 30, backgroundColor: 'rgb(54,70,93)', width: 'inherit', position: 'absolute', bottom: 0 }} />
+            </div>
+        )
     }
 
 }

@@ -21,9 +21,13 @@ export interface Blog {
 
 export interface Post {
     blog: Blog;
+    type: 'answer' | 'photo' | 'text' | 'quote' |string;
+    body?: string;
     post_url: string;
     image_permalink?: string;
     photos?: Array<Photo>;
+    liked_timestamp: number;
+    text?: string;
 }
 
 export interface ResponseLinks {
