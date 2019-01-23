@@ -3,19 +3,23 @@ import { likes, Post, Photo } from './posts';
 import { List, WindowScroller, InfiniteLoader } from 'react-virtualized';
 export interface AppState {
     blog: string;
+    blogForm: string;
     posts: Array<Post>;
     after: number;
     fontSize: number;
     lineHeight: number;
+    width: number;
 }
 
 export class App extends React.Component<{}, AppState> {
     state = {
-        blog: 'gerardo-ga',
+        blog: 'gerrygoo',
+        blogForm: '',
         posts: [] as Array<Post>,
         after: 788918400, // beginning of tumblr time
         fontSize: 14,
         lineHeight: 20,
+        width: window.innerWidth / 2
     };
 
     public componentDidMount() {
@@ -27,12 +31,46 @@ export class App extends React.Component<{}, AppState> {
         const style = window.getComputedStyle(el!, null).getPropertyValue('font-size');
         const lineHeightStyle = window.getComputedStyle(el!, null).getPropertyValue('line-height');
         const fontSize = parseFloat(style);
-        const lineHeight = parseFloat(lineHeightStyle);
+        const lineHeight = parseFloat(lineHeightStyle)
 
-        this.setState({ fontSize, lineHeight });
+        const portrait = window.innerHeight > window.innerWidth;
+
+        this.setState({ fontSize, lineHeight, width: portrait ? window.innerWidth : window.innerWidth / 3 });
     }
 
     public render = () => <div style={{ backgroundColor: 'rgb(54,70,93)', display: 'flex', justifyContent: 'center' }}>
+        <div style={{
+            position: 'fixed',
+             top: 0,
+             height: 20,
+             width: '100%',
+             backgroundColor: 'SteelBlue',
+             zIndex: 1,
+             flexDirection: 'row',
+             display: 'flex'
+            }}
+        >
+            Reverse tumblr likes browser
+            <button
+                style={{
+                    position: 'absolute',
+                    right: 200,
+                    height: 'inherit',
+                }}
+                title='Change!'
+                onClick={ () => this.setState( (prevState) => ({ blog: prevState.blogForm }) ) }
+            />
+            <input
+                style={{
+                    position: 'absolute',
+                    right: 0,
+                    height: 'inherit',
+                }}
+                placeholder={this.state.blog}
+                onChange={(event) => this.setState({blogForm: event.target.value})}
+            />
+
+        </div>
         <InfiniteLoader
             isRowLoaded={(idx) => this.isRowLoaded(idx)}
             loadMoreRows={(idx) => this.loadMoreRows(idx)}
@@ -43,6 +81,7 @@ export class App extends React.Component<{}, AppState> {
                     {({ height, isScrolling, onChildScroll, scrollTop }) => (
                         <List
                             autoHeight
+                            style={{top: 20}}
                             height={height}
                             isScrolling={isScrolling}
                             onScroll={onChildScroll}
@@ -51,14 +90,12 @@ export class App extends React.Component<{}, AppState> {
                             onRowsRendered={onRowsRendered}
 
                             // width={ window.innerWidth }
-                            width={window.innerWidth / 2}
+                            width={ this.state.width }
 
                             ref={registerChild}
                             rowCount={this.state.posts.length}
                             rowHeight={(idx) => this.rowHeight(idx)}
                             rowRenderer={(confObj) => this.rowRenderer(confObj)}
-
-                            // onScoll={({ clientHeight, scrollHeight, scrollTop }) => console.log(clientHeight, scrollHeight, scrollTop)}
                         />
                     )}
                 </WindowScroller>
@@ -68,14 +105,17 @@ export class App extends React.Component<{}, AppState> {
     </div>;
 
     private async loadLikes() {
-        // console.log('getting likes');
-        const res = await likes(this.state.blog, this.state.after);
+        const { blog, after } = this.state;
+        const res = await likes(blog, after);
+
         const { response: { _links: links, liked_posts: new_likes } } = { ...res };
-        const { prev: { query_params: { after } } } = links;
+
+        const { prev: { query_params: { after: nextAfter } } } = links;
         // console.log(new_likes);
+
         this.setState({
             posts: this.state.posts.concat(new_likes.reverse()),
-            after,
+            after: nextAfter,
         });
     }
 
@@ -95,7 +135,7 @@ export class App extends React.Component<{}, AppState> {
         const { fontSize, lineHeight } = this.state;
 
         const lines = (
-            ((text.length * fontSize ) / (window.innerWidth / 2) ) +
+            ((text.length * fontSize ) / (this.state.width) ) +
             (text.match(/<\/p>\n<p>/gi) ? text.match(/<\/p>\n<p>/gi)!.length : 0) * 2
         );
 
@@ -104,7 +144,7 @@ export class App extends React.Component<{}, AppState> {
     }
 
     private photosHeight( photos: Array<Photo> ) {
-        const containerWidth = window.innerWidth / 2;
+        const containerWidth = this.state.width;
         return photos.map(
             photo => (photo.original_size.height * ( photo.original_size.width < containerWidth ? 1 : (containerWidth / photo.original_size.width) ))
         ).reduce((acc, cur) => acc + cur);
@@ -117,7 +157,7 @@ export class App extends React.Component<{}, AppState> {
         const bodyHeight = post.body ? this.textHeight(post.body) : 0;
         const textHeight = post.text ? this.textHeight(post.text) : 0;
 
-        return photosHeight + bodyHeight + textHeight + 70;
+        return photosHeight + bodyHeight + (textHeight - 50) + 70;
     }
 
     private rowRenderer({
@@ -146,8 +186,12 @@ export class App extends React.Component<{}, AppState> {
                     flexDirection: 'column'
                 }}
             >
-                <div style={{ alignSelf: 'flex-start' }} >{`On ${date.toLocaleString()}. Type: ${post.type}`}</div>
-                <a style={{ alignSelf: 'flex-start' }} >{post.post_url}</a>
+                <div style={{ alignSelf: 'flex-start' }} >{`${index}, on ${date.toLocaleString()}. Type: ${post.type}`}</div>
+                <a
+                    style={{ alignSelf: 'flex-start' }}
+                    href={post.post_url}
+                    target='_blank'
+                >{post.post_url}</a>
                 {post.photos &&
                     post.photos.map(
                         photo =>
