@@ -16,18 +16,19 @@ export interface Blog {
     title: string;
     updated: string;
     url: string;
-​​    uuid: string;
+    uuid: string;
 }
 
 export interface Post {
     blog: Blog;
-    type: 'answer' | 'photo' | 'text' | 'quote' |string;
+    type: 'answer' | 'photo' | 'text' | 'quote' | string;
     body?: string;
     post_url: string;
     image_permalink?: string;
     photos?: Array<Photo>;
     liked_timestamp: number;
     text?: string;
+    tags: string[];
 }
 
 export interface ResponseLinks {
@@ -54,7 +55,7 @@ export interface Response {
     meta: any;
 }
 
-export const likes = (blog: string, after: number): Promise<Response> => {
+export const fetchLikes = (blog: string, after: number): Promise<Response> => {
     return fetch(`https://api.tumblr.com/v2/blog/${blog}/likes?api_key=9MwDZZAj31FhNqKXu2wDVgyToi7AvyfWLZbAyl5B1JBuxUMvjD&after=${after}`)
         .then( res => res.json() );
 }
