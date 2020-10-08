@@ -14,7 +14,7 @@ import { styles } from "./styles";
 
 const TUMBLR_BIG_BANG = 788918400;
 
-const BLOG = "gerrygoo";
+const BLOG = "gerardogaol";
 
 export interface AppState {
   blog: string;
