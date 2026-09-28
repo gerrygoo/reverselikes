@@ -7,6 +7,10 @@ The rail on the right is a timeline of every like, oldest at the top: hover or
 drag to preview a date, click or release to jump there. With it focused, the
 arrow keys move a month, Page Up/Down a year, and Home/End go to either end.
 
+The address bar always holds a link to the post at the top of the screen
+(`#t=<unix timestamp of the like>`), and "Copy link" copies it. Opening such a
+link starts the list at that like.
+
 Built with React 19, Vite and TypeScript; the list is virtualized with
 `@tanstack/react-virtual`.
 

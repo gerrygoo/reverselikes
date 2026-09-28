@@ -4,6 +4,7 @@ import { EdgeState, useLikes } from "./useLikes";
 import { NavBar } from "./NavBar";
 import { PostCard } from "./PostCard";
 import { Timeline } from "./Timeline";
+import { linkTo, parseHash, replaceHash } from "./permalink";
 
 const BLOG = "gerardogaol";
 // Height of the fixed nav bar plus the gap below it; keep in sync with styles.css.
@@ -21,7 +22,9 @@ function EdgeStatus({ edge, endText, onRetry }: { edge: EdgeState; endText: stri
 }
 
 export function App() {
-  const { posts, total, range, edges, load, jumpTo } = useLikes(BLOG);
+  // Read once: a shared link opens the list at that point in the timeline.
+  const [initial] = useState(() => parseHash(window.location.hash));
+  const { posts, total, range, edges, load, jumpTo } = useLikes(BLOG, initial);
   const { forward, backward } = edges;
   const listRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
@@ -79,12 +82,46 @@ export function App() {
     window.scrollTo({ top: 0 });
   };
 
+  // Keep the address bar pointing at the post on screen, so it can be copied
+  // from there too. Debounced: it changes constantly while scrolling.
+  const topStamp = topPost?.liked_timestamp;
+  useEffect(() => {
+    if (topStamp === undefined) return;
+    const id = setTimeout(() => replaceHash(topStamp), 300);
+    return () => clearTimeout(id);
+  }, [topStamp]);
+
+  // Pasting a link or editing the hash by hand while the page is open. The
+  // replaceHash above doesn't fire this, so it only sees outside changes.
+  useEffect(() => {
+    const onHashChange = () => {
+      const ts = parseHash(window.location.hash);
+      if (ts !== undefined) onJump(ts);
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  });
+
+  const [copied, setCopied] = useState(false);
+  const onCopyLink = () => {
+    const link = topStamp === undefined ? window.location.href : linkTo(topStamp);
+    navigator.clipboard
+      .writeText(link)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => window.prompt("Copy this link:", link));
+  };
+
   return (
     <>
       <NavBar
         loaded={posts.length}
         total={total}
         onBackToTop={() => (backward.done ? window.scrollTo({ top: 0 }) : onJump(0))}
+        onCopyLink={onCopyLink}
+        copied={copied}
       />
       {(backward.loading || backward.error) && (
         <div className="edge-pill">
