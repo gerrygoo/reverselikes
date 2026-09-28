@@ -1,0 +1,105 @@
+:root {
+  --bg: rgb(54, 70, 93);
+  --bar: steelblue;
+  --card: white;
+  --muted: #666;
+  --navbar-height: 36px;
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.navbar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 1;
+  height: var(--navbar-height);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  background: var(--bar);
+  color: white;
+}
+
+.navbar-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A third of the screen in landscape, full width in portrait. */
+.list {
+  position: relative;
+  width: 33.33vw;
+  min-width: 360px;
+  max-width: 100%;
+  margin: calc(var(--navbar-height) + 12px) auto 0;
+}
+
+@media (orientation: portrait) {
+  .list {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding-bottom: 12px;
+}
+
+.post {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--card);
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+.post-meta,
+.post-tags {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.post-link {
+  font-size: 13px;
+}
+
+.photo,
+.post-html img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.post-html > :first-child {
+  margin-top: 0;
+}
+
+.post-html > :last-child {
+  margin-bottom: 0;
+}
+
+blockquote {
+  margin: 0;
+}
+
+.status {
+  padding: 24px;
+  text-align: center;
+  color: white;
+}

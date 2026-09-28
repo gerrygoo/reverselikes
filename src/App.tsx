@@ -1,128 +1,73 @@
-import * as React from "react";
-import { fetchLikes, Post } from "./posts";
-import {
-  List,
-  WindowScroller,
-  InfiniteLoader,
-  CellMeasurer,
-  CellMeasurerCache,
-} from "react-virtualized";
-import { photoPost } from "./postRenderers";
-import { navBar } from "./navBar";
-
-import { styles } from "./styles";
-
-const TUMBLR_BIG_BANG = 788918400;
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { useLikes } from "./useLikes";
+import { NavBar } from "./NavBar";
+import { PostCard } from "./PostCard";
 
 const BLOG = "gerardogaol";
 
-export interface AppState {
-  blog: string;
-  atIndex: number | undefined;
-  atDate: number;
-  width: number;
-}
+export function App() {
+  const { posts, total, loading, done, error, loadMore } = useLikes(BLOG);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
 
-export class App extends React.Component<{}, AppState> {
-  state = {
-    blog: BLOG,
-    atIndex: undefined,
-    atDate: TUMBLR_BIG_BANG,
-    width: window.innerWidth / 2,
-  };
+  useLayoutEffect(() => {
+    setScrollMargin(listRef.current?.offsetTop ?? 0);
+  }, []);
 
-  _heightCache = new CellMeasurerCache({ fixedWidth: true, minHeight: 50 });
-  posts = [] as Array<Post>;
-  list: List | null = null;
+  // One extra row at the end shows loading / error / end-of-list status.
+  const virtualizer = useWindowVirtualizer({
+    count: posts.length + 1,
+    estimateSize: () => 600,
+    overscan: 4,
+    scrollMargin,
+    getItemKey: (i) => posts[i]?.id_string ?? "status",
+  });
+  const items = virtualizer.getVirtualItems();
+  const lastIndex = items.at(-1)?.index ?? 0;
 
-  public componentDidMount() {
-    this.loadLikes();
-
-    const isPortrait = window.innerHeight > window.innerWidth;
-    this.setState({
-      width: isPortrait ? window.innerWidth : window.innerWidth / 3,
-    });
-  }
-
-  public render = () => (
-    <div style={styles.body}>
-      {navBar(this.posts.length, () => {
-        if (this.list) {
-          this.list.scrollToPosition(100);
-          console.log("scrolled?");
-        }
-      })}
-      <InfiniteLoader
-        isRowLoaded={(idx) => this.isRowLoaded(idx)}
-        loadMoreRows={(idx) => this.loadMoreRows(idx)}
-        rowCount={30000}
-      >
-        {({ onRowsRendered, registerChild }) => (
-          <WindowScroller>
-            {({ height, isScrolling, onChildScroll, scrollTop }) => (
-              <List
-                autoHeight
-                style={{ top: 20 }}
-                height={height}
-                isScrolling={isScrolling}
-                onScroll={onChildScroll}
-                scrollTop={scrollTop}
-                onRowsRendered={onRowsRendered}
-                width={this.state.width}
-                ref={(list) => {
-                  this.list = list;
-                  return registerChild;
-                }}
-                rowCount={this.posts.length}
-                rowHeight={this._heightCache.rowHeight}
-                rowRenderer={(confObj) => this.rowRenderer(confObj)}
-              />
-            )}
-          </WindowScroller>
-        )}
-      </InfiniteLoader>
-    </div>
-  );
-
-  private async loadLikes() {
-    const { blog, atDate } = this.state;
-    const fetchResult = await fetchLikes(blog, atDate);
-
-    const {
-      response: { _links: links, liked_posts: new_likes },
-    } = { ...fetchResult };
-    const nextDate = links.prev.query_params.after;
-
-    console.log(new_likes.reverse());
-
-    Array.prototype.push.apply(this.posts, new_likes.reverse());
-    this.setState({
-      atDate: nextDate,
-    });
-  }
-
-  private async loadMoreRows({ startIndex }) {
-    if (startIndex > this.posts.length) {
-      await this.loadLikes();
+  // Fetch the next page once the status row scrolls into view.
+  useEffect(() => {
+    if (lastIndex >= posts.length && !loading && !done && !error) {
+      void loadMore();
     }
-  }
+  }, [lastIndex, posts.length, loading, done, error, loadMore]);
 
-  private isRowLoaded({ index }) {
-    return index <= this.posts.length;
-  }
-
-  private rowRenderer({ key, index, parent, style }) {
-    const post = this.posts[index];
-    return (
-      <CellMeasurer
-        cache={this._heightCache}
-        columnIndex={0}
-        key={key}
-        rowIndex={index}
-        parent={parent}
-      >
-        {({ measure }) => photoPost(measure, style, index, post)}
-      </CellMeasurer>
-    );
-  }
+  return (
+    <>
+      <NavBar
+        loaded={posts.length}
+        total={total}
+        onBackToTop={() => window.scrollTo({ top: 0 })}
+      />
+      <main ref={listRef} className="list" style={{ height: virtualizer.getTotalSize() }}>
+        {items.map((row) => (
+          <div
+            key={row.key}
+            data-index={row.index}
+            ref={virtualizer.measureElement}
+            className="row"
+            style={{ transform: `translateY(${row.start - virtualizer.options.scrollMargin}px)` }}
+          >
+            {row.index < posts.length ? (
+              <PostCard post={posts[row.index]} index={row.index} />
+            ) : (
+              <div className="status">
+                {error ? (
+                  <>
+                    <p>Couldn't load likes: {error}</p>
+                    <button onClick={() => void loadMore()}>Retry</button>
+                  </>
+                ) : done ? (
+                  "That's all the likes."
+                ) : (
+                  "Loading…"
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </main>
+    </>
+  );
 }
