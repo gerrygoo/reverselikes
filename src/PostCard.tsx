@@ -64,12 +64,12 @@ function PostBody({ post }: { post: Post }) {
   }
 }
 
-export function PostCard({ post, index }: { post: Post; index: number }) {
+export function PostCard({ post }: { post: Post }) {
   const likedAt = new Date(post.liked_timestamp * 1000).toLocaleString();
   return (
     <article className="post">
       <div className="post-meta">
-        #{index + 1} · liked {likedAt} · {post.type} from {post.blog_name}
+        Liked {likedAt} · {post.type} from {post.blog_name}
       </div>
       <PostBody post={post} />
       {post.tags.length > 0 && <div className="post-tags">{post.tags.map((t) => `#${t}`).join(" ")}</div>}

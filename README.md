@@ -3,6 +3,10 @@
 Browse a Tumblr blog's likes from oldest to newest, with infinite scroll.
 Live at <https://tumblrlikes.ggo.blue>.
 
+The rail on the right is a timeline of every like, oldest at the top: hover or
+drag to preview a date, click or release to jump there. With it focused, the
+arrow keys move a month, Page Up/Down a year, and Home/End go to either end.
+
 Built with React 19, Vite and TypeScript; the list is virtualized with
 `@tanstack/react-virtual`.
 

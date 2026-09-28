@@ -4,6 +4,7 @@
   --card: white;
   --muted: #666;
   --navbar-height: 36px;
+  --timeline-width: 56px;
   font-family: system-ui, sans-serif;
   font-size: 15px;
 }
@@ -30,6 +31,16 @@ body {
   color: white;
 }
 
+.navbar > * {
+  white-space: nowrap;
+}
+
+.navbar-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .navbar-count {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
@@ -46,8 +57,9 @@ body {
 
 @media (orientation: portrait) {
   .list {
-    width: 100%;
+    width: calc(100% - var(--timeline-width));
     min-width: 0;
+    margin-left: 0;
   }
 }
 
@@ -102,4 +114,90 @@ blockquote {
   padding: 24px;
   text-align: center;
   color: white;
+}
+
+.timeline {
+  position: fixed;
+  top: var(--navbar-height);
+  right: 0;
+  bottom: 0;
+  width: var(--timeline-width);
+  padding: 16px 0;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+}
+
+.timeline:focus-visible {
+  outline: 2px solid white;
+  outline-offset: -2px;
+}
+
+.timeline-track {
+  position: relative;
+  height: 100%;
+  margin-right: 8px;
+  border-right: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.timeline-year {
+  position: absolute;
+  right: 0;
+  width: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.timeline-year span {
+  position: absolute;
+  right: 12px;
+  transform: translateY(-50%);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-current {
+  position: absolute;
+  right: -5px;
+  width: 20px;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 2px;
+  background: white;
+  pointer-events: none;
+}
+
+.timeline-preview {
+  position: absolute;
+  right: 0;
+  width: 100vw;
+  border-top: 1px dashed white;
+  pointer-events: none;
+}
+
+.timeline-preview span {
+  position: absolute;
+  right: 24px;
+  transform: translateY(-50%);
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--bar);
+  color: white;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Status of the earlier-likes end, floating under the nav bar. */
+.edge-pill {
+  position: fixed;
+  top: calc(var(--navbar-height) + 8px);
+  left: 50%;
+  z-index: 1;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--bar);
+  color: white;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }

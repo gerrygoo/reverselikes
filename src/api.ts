@@ -56,20 +56,20 @@ interface Envelope {
 
 const API_KEY = import.meta.env.VITE_TUMBLR_API_KEY as string | undefined;
 
+export type PageQuery = { after: number } | { before: number } | Record<string, never>;
+
 /**
- * Fetches the page of likes that come right after `after` (a Unix timestamp).
- * Tumblr returns each page newest-first; `_links.prev` points at the next,
- * newer page.
+ * Fetches one page of likes: the 20 right after or right before a Unix
+ * timestamp, or the 20 newest with an empty query. Tumblr returns every page
+ * newest-first.
  */
-export async function fetchLikes(blog: string, after: number, signal?: AbortSignal): Promise<Likes> {
+export async function fetchLikes(blog: string, query: PageQuery): Promise<Likes> {
   if (!API_KEY) {
     throw new Error("VITE_TUMBLR_API_KEY is not set. Copy .env.example to .env and fill it in.");
   }
-  const params = new URLSearchParams({ api_key: API_KEY, after: String(after) });
-  const res = await fetch(
-    `https://api.tumblr.com/v2/blog/${encodeURIComponent(blog)}/likes?${params}`,
-    { signal },
-  );
+  const params = new URLSearchParams({ api_key: API_KEY });
+  for (const [key, value] of Object.entries(query)) params.set(key, String(value));
+  const res = await fetch(`https://api.tumblr.com/v2/blog/${encodeURIComponent(blog)}/likes?${params}`);
   const body = (await res.json().catch(() => null)) as Envelope | null;
   if (!res.ok || !body) {
     throw new Error(`Tumblr API error ${res.status}: ${body?.meta?.msg ?? res.statusText}`);
