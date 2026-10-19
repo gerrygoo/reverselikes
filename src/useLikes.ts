@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchLikes, Post } from "./api";
+import { fetchLikes, PageQuery, Post } from "./api";
 
 // A timestamp from before Tumblr existed, so paging after it starts at the oldest like.
 const TUMBLR_BIG_BANG = 788918400;
@@ -25,20 +25,25 @@ const idle = (done: boolean): EdgeState => ({ loading: false, done, error: undef
 /**
  * Holds a contiguous, oldest-first window of a blog's likes that can grow at
  * either end, and can be re-centered on any point in time with `jumpTo`.
+ * With `initial`, the window starts at that timestamp instead of the oldest like.
  */
-export function useLikes(blog: string) {
+export function useLikes(blog: string, initial?: number) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [total, setTotal] = useState<number>();
   const [first, setFirst] = useState<number>();
   const [last, setLast] = useState<number>();
-  const [edges, setEdges] = useState({ forward: idle(false), backward: idle(true) });
+  const [edges, setEdges] = useState({ forward: idle(false), backward: idle(initial === undefined) });
 
   // Bumped on every jump; responses from an older generation are dropped.
   const generation = useRef(0);
   const inFlight = useRef({ forward: false, backward: false });
   const seen = useRef(new Set<string>());
   // Oldest and newest timestamps loaded so far: the cursors for the next pages.
-  const cursors = useRef({ oldest: TUMBLR_BIG_BANG, newest: TUMBLR_BIG_BANG });
+  const cursors = useRef(
+    initial === undefined
+      ? { oldest: TUMBLR_BIG_BANG, newest: TUMBLR_BIG_BANG }
+      : { oldest: initial, newest: initial - 1 },
+  );
 
   const setEdge = (dir: Direction, edge: Partial<EdgeState>) =>
     setEdges((e) => ({ ...e, [dir]: { ...e[dir], ...edge } }));
@@ -71,7 +76,6 @@ export function useLikes(blog: string) {
         const fresh = accept(page.liked_posts);
         let done = stamps.length === 0;
         if (dir === "forward") {
-          if (cur.newest === TUMBLR_BIG_BANG && stamps.length) setFirst(Math.min(...stamps));
           const newest = Math.max(cur.newest, ...stamps);
           done ||= newest === cur.newest;
           cur.newest = newest;
@@ -114,16 +118,20 @@ export function useLikes(blog: string) {
     [first],
   );
 
-  // The newest like marks the end of the timeline.
+  // The oldest and newest likes are the ends of the timeline. They're fetched
+  // on their own because the window may start anywhere, e.g. from a shared link.
   useEffect(() => {
-    fetchLikes(blog, {})
-      .then((page) => {
-        const stamps = stampsOf(page.liked_posts);
-        if (stamps.length) setLast(Math.max(...stamps));
-      })
-      .catch(() => {
-        // Without it the timeline just stays hidden; the list still works.
-      });
+    const fetchEnd = (query: PageQuery, set: (ts: number) => void, pick: (...n: number[]) => number) =>
+      fetchLikes(blog, query)
+        .then((page) => {
+          const stamps = stampsOf(page.liked_posts);
+          if (stamps.length) set(pick(...stamps));
+        })
+        .catch(() => {
+          // Without them the timeline just stays hidden; the list still works.
+        });
+    void fetchEnd({}, setLast, Math.max);
+    void fetchEnd({ after: TUMBLR_BIG_BANG }, setFirst, Math.min);
   }, [blog]);
 
   const range: LikeRange | undefined =
