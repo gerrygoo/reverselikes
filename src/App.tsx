@@ -4,9 +4,8 @@ import { EdgeState, useLikes } from "./useLikes";
 import { NavBar } from "./NavBar";
 import { PostCard } from "./PostCard";
 import { Timeline } from "./Timeline";
-import { linkTo, parseHash, replaceHash } from "./permalink";
+import { linkTo, parseHash, replaceHash, Target } from "./permalink";
 
-const BLOG = "gerardogaol";
 // Height of the fixed nav bar plus the gap below it; keep in sync with styles.css.
 const TOP_INSET = 48;
 
@@ -21,10 +20,22 @@ function EdgeStatus({ edge, endText, onRetry }: { edge: EdgeState; endText: stri
   return <>{edge.done ? endText : "Loading…"}</>;
 }
 
+/** The blog in the address bar. Switching blogs remounts the browser, so none of the old blog's state leaks. */
 export function App() {
-  // Read once: a shared link opens the list at that point in the timeline.
-  const [initial] = useState(() => parseHash(window.location.hash));
-  const { posts, total, range, edges, load, jumpTo } = useLikes(BLOG, initial);
+  const [target, setTarget] = useState(() => parseHash(window.location.hash));
+  useEffect(() => {
+    const onHashChange = () => setTarget(parseHash(window.location.hash));
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+  return <Browser key={target.blog} target={target} />;
+}
+
+function Browser({ target }: { target: Target }) {
+  const { blog } = target;
+  // Only the first timestamp is the start of the list; later ones are jumps.
+  const [initial] = useState(target.timestamp);
+  const { posts, total, range, edges, load, jumpTo } = useLikes(blog, initial);
   const { forward, backward } = edges;
   const listRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
@@ -87,24 +98,22 @@ export function App() {
   const topStamp = topPost?.liked_timestamp;
   useEffect(() => {
     if (topStamp === undefined) return;
-    const id = setTimeout(() => replaceHash(topStamp), 300);
+    const id = setTimeout(() => replaceHash(blog, topStamp), 300);
     return () => clearTimeout(id);
   }, [topStamp]);
 
   // Pasting a link or editing the hash by hand while the page is open. The
-  // replaceHash above doesn't fire this, so it only sees outside changes.
+  // replaceHash above doesn't fire hashchange, so this only sees outside changes.
+  const handled = useRef(target);
   useEffect(() => {
-    const onHashChange = () => {
-      const ts = parseHash(window.location.hash);
-      if (ts !== undefined) onJump(ts);
-    };
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    if (handled.current === target) return;
+    handled.current = target;
+    if (target.timestamp !== undefined) onJump(target.timestamp);
   });
 
   const [copied, setCopied] = useState(false);
   const onCopyLink = () => {
-    const link = topStamp === undefined ? window.location.href : linkTo(topStamp);
+    const link = topStamp === undefined ? window.location.href : linkTo(blog, topStamp);
     navigator.clipboard
       .writeText(link)
       .then(() => {
@@ -117,6 +126,7 @@ export function App() {
   return (
     <>
       <NavBar
+        blog={blog}
         loaded={posts.length}
         total={total}
         onBackToTop={() => (backward.done ? window.scrollTo({ top: 0 }) : onJump(0))}

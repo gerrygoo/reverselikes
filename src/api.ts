@@ -71,6 +71,9 @@ export async function fetchLikes(blog: string, query: PageQuery): Promise<Likes>
   for (const [key, value] of Object.entries(query)) params.set(key, String(value));
   const res = await fetch(`https://api.tumblr.com/v2/blog/${encodeURIComponent(blog)}/likes?${params}`);
   const body = (await res.json().catch(() => null)) as Envelope | null;
+  if (res.status === 403 || res.status === 404) {
+    throw new Error(`"${blog}" doesn't exist, or its likes aren't public.`);
+  }
   if (!res.ok || !body) {
     throw new Error(`Tumblr API error ${res.status}: ${body?.meta?.msg ?? res.statusText}`);
   }

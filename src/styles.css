@@ -41,6 +41,12 @@ body {
   text-overflow: ellipsis;
 }
 
+.navbar-blog input {
+  width: 14em;
+  max-width: 100%;
+  font: inherit;
+}
+
 .navbar-count {
   margin-left: auto;
   font-variant-numeric: tabular-nums;

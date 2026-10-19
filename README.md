@@ -1,15 +1,18 @@
 # reverselikes
 
-Browse a Tumblr blog's likes from oldest to newest, with infinite scroll.
+Browse any Tumblr blog's public likes from oldest to newest, with infinite scroll.
 Live at <https://tumblrlikes.ggo.blue>.
 
 The rail on the right is a timeline of every like, oldest at the top: hover or
 drag to preview a date, click or release to jump there. With it focused, the
 arrow keys move a month, Page Up/Down a year, and Home/End go to either end.
 
-The address bar always holds a link to the post at the top of the screen
-(`#t=<unix timestamp of the like>`), and "Copy link" copies it. Opening such a
-link starts the list at that like.
+Type any blog's name or URL in the box in the nav bar to browse its likes
+(they must be public; Tumblr hides the rest). The address bar always holds a
+link to the blog and the post at the top of the screen
+(`#blog=<name>&t=<unix timestamp of the like>`), and "Copy link" copies it.
+Opening such a link starts that blog's list at that like. Without a `blog`
+in the link, the default blog is used.
 
 Built with React 19, Vite and TypeScript; the list is virtualized with
 `@tanstack/react-virtual`.
@@ -26,7 +29,7 @@ npm run dev
 static site, so it is visible to anyone who loads the page; that's inherent to
 calling the Tumblr API from the browser.
 
-The blog to browse is the `BLOG` constant in `src/App.tsx`.
+The blog shown when none is given is `DEFAULT_BLOG` in `src/permalink.ts`.
 
 ## Deploy
 
